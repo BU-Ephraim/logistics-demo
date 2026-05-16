@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
-    transport: WebSocket,
+    transport: WebSocket as unknown as never,
   },
 });
 
