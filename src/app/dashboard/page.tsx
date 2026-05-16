@@ -331,7 +331,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsDriverModalOpen(true)}
-                className="inline-flex items-center justify-center rounded-lg border border-accent/30 bg-accent/10 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-accent transition hover:bg-accent/20 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs sm:tracking-[0.18em]"
+                className="inline-flex w-fit items-center justify-center self-start rounded-lg border border-accent/30 bg-accent/10 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-accent transition hover:bg-accent/20 sm:self-auto sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs sm:tracking-[0.18em]"
               >
                 Add Driver
               </button>
@@ -444,7 +444,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => void handleDownloadCompletedOrdersCsv()}
                   disabled={isDownloadingCsv}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:border-accent/30 hover:bg-background/80 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground transition hover:border-accent/30 hover:bg-background/80 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:rounded-xl sm:px-4 sm:text-sm"
                 >
                   {isDownloadingCsv ? "Preparing CSV..." : "Download CSV"}
                 </button>
@@ -567,7 +567,7 @@ function StatCard({
 }) {
   return (
     <article className="min-w-0 rounded-[18px] border border-border bg-card p-3 shadow-2xl shadow-black/20 sm:rounded-[24px] sm:p-5">
-      <div className="flex items-start justify-between gap-2 sm:gap-3">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <p className="min-w-0 text-[10px] uppercase leading-4 tracking-[0.12em] text-muted sm:text-sm sm:tracking-[0.24em]">
           {label}
         </p>
