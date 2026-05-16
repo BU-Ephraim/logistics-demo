@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
@@ -14,8 +15,29 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+async function generateUniqueAdminId() {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidateId = uuidv4();
+    const { data, error } = await supabase
+      .from('admins')
+      .select('id')
+      .eq('id', candidateId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      return candidateId;
+    }
+  }
+
+  throw new Error('Unable to generate a unique admin ID after several attempts.');
+}
+
 async function main() {
-  const adminId = uuidv4();
+  const adminId = await generateUniqueAdminId();
   const { error } = await supabase.from('admins').insert({ id: adminId });
 
   if (error) {
@@ -25,7 +47,9 @@ async function main() {
   }
 
   console.log(`New admin ID: ${adminId}`);
-  console.log(`Demo URL: http://localhost:3000/demo/${adminId}`);
+  console.log(`Saved to database: yes`);
+  console.log(`Demo URL: ${appUrl.replace(/\/$/, '')}/demo/${adminId}`);
+  console.log(`Direct chat URL: ${appUrl.replace(/\/$/, '')}/chat`);
 }
 
 void main();

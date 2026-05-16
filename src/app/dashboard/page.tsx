@@ -63,8 +63,15 @@ export default function DashboardPage() {
   const [driverForm, setDriverForm] = useState<DriverFormState>({ name: "", phone: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState<string | null>(null);
+  const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const [isSavingDriver, setIsSavingDriver] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.warn(
+      "Demo security note: this app relies on client-side admin_id filtering. Add Supabase Auth or a server-validated token flow before treating this as production-safe multi-tenant isolation."
+    );
+  }, []);
 
   useEffect(() => {
     if (isHydrated && !adminId) {
@@ -255,6 +262,37 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleDownloadCompletedOrdersCsv() {
+    if (!adminId) {
+      return;
+    }
+
+    const activeAdminId = adminId;
+    setIsDownloadingCsv(true);
+    setError(null);
+
+    try {
+      const orderRows = await fetchOrders(activeAdminId);
+      const deliveredOrders = orderRows.filter((order) => order.status === "delivered");
+      const csv = buildCompletedOrdersCsv(deliveredOrders);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const dateSuffix = new Date().toISOString().slice(0, 10);
+
+      link.href = objectUrl;
+      link.download = `completed-orders-${dateSuffix}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (downloadError) {
+      setError(getErrorMessage(downloadError, "Failed to download completed orders CSV."));
+    } finally {
+      setIsDownloadingCsv(false);
+    }
+  }
+
   if (!isHydrated || !adminId || isLoading) {
     return <DashboardLoadingState />;
   }
@@ -398,7 +436,20 @@ export default function DashboardPage() {
             </OrdersTable>
             </OrdersPanel>
           ) : (
-            <OrdersPanel title="Completed Orders" subtitle="Delivered runs with full payout and customer details.">
+            <OrdersPanel
+              title="Completed Orders"
+              subtitle="Delivered runs with full payout and customer details."
+              action={
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadCompletedOrdersCsv()}
+                  disabled={isDownloadingCsv}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition hover:border-accent/30 hover:bg-background/80 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isDownloadingCsv ? "Preparing CSV..." : "Download CSV"}
+                </button>
+              }
+            >
             <OrdersTable>
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-[0.2em] text-muted">
@@ -529,16 +580,21 @@ function StatCard({
 function OrdersPanel({
   title,
   subtitle,
+  action,
   children,
 }: {
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="flex min-h-0 flex-col rounded-[28px] border border-border bg-card shadow-2xl shadow-black/20">
       <div className="border-b border-border px-5 py-4">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          {action}
+        </div>
         {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
@@ -777,4 +833,54 @@ function getDashboardTabClassName(isActive: boolean) {
   return isActive
     ? "inline-flex items-center justify-between gap-3 rounded-[18px] border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-accent transition"
     : "inline-flex items-center justify-between gap-3 rounded-[18px] border border-border bg-background px-4 py-3 text-sm font-medium text-muted transition hover:border-accent/30 hover:text-foreground";
+}
+
+function buildCompletedOrdersCsv(orders: OrderRow[]) {
+  const headers = [
+    "Order #",
+    "Customer Name",
+    "Pickup",
+    "Dropoff",
+    "Phone",
+    "Item",
+    "Amount",
+    "Driver",
+    "Delivered At",
+  ];
+
+  const rows = orders.map((order) => [
+    order.order_number ?? "",
+    order.customer_name,
+    order.pickup,
+    order.dropoff,
+    order.phone,
+    order.item ?? "",
+    order.amount ?? "",
+    order.driver_name ?? "",
+    formatCsvDateTime(order.delivered_at),
+  ]);
+
+  return [headers, ...rows]
+    .map((row) => row.map((value) => escapeCsvValue(value)).join(","))
+    .join("\n");
+}
+
+function escapeCsvValue(value: string | number) {
+  const normalized = String(value ?? "");
+  const escaped = normalized.replaceAll('"', '""');
+  return `"${escaped}"`;
+}
+
+function formatCsvDateTime(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }

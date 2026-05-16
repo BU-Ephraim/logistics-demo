@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local-only docs and scripts
+PROJECT_GUIDE.md
+scripts/generate-admin.ts
+
 # vercel
 .vercel
 
