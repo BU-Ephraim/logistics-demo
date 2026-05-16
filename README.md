@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Logistics Demo
 
-## Getting Started
+Realtime logistics dispatch demo built with Next.js, React, TypeScript, Tailwind CSS, and Supabase.
 
-First, run the development server:
+## What It Includes
+
+- landing page with demo admin bootstrap
+- chat workspace for customer, bot, and driver conversations
+- bot-assisted order intake and dispatch flow
+- dashboard with analytics, active/completed order views, and CSV export
+- driver onboarding modal
+- realtime sync for orders and messages
+
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create your local env file from the template:
+
+```bash
+copy .env.example .env.local
+```
+
+3. Fill in these values in `.env.local`:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `DEFAULT_ADMIN_ID` optional
+- `DEFAULT_BUSINESS_NAME` optional
+
+4. Start the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Vercel Hosting Checklist
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app is ready for Vercel hosting if the following are in place:
 
-## Learn More
+1. Your Supabase project is live and the schema in `supabase/schema.sql` has been applied.
+2. Realtime is enabled for `orders` and `messages`.
+3. The Vercel project has the required environment variables.
 
-To learn more about Next.js, take a look at the following resources:
+### Add These Environment Variables In Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `DEFAULT_ADMIN_ID` optional
+- `DEFAULT_BUSINESS_NAME` optional
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Recommended Vercel Settings
 
-## Deploy on Vercel
+- Framework Preset: `Next.js`
+- Build Command: `npm run build`
+- Install Command: `npm install`
+- Output Directory: leave default
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy To Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push the repo to GitHub.
+2. Import the repository into Vercel.
+3. Add the environment variables listed above.
+4. Deploy.
+
+## Notes Before You Go Live
+
+- The app currently uses localStorage for demo session state.
+- Data separation is driven by `admin_id` filtering in the app.
+- This is suitable for demo hosting, not production-grade tenant security.
+- For production isolation, add Supabase Auth or a server-validated session/token flow.
+
+## Validation
+
+Useful commands before deploy:
+
+```bash
+npm run lint
+npm run build
+```
