@@ -319,7 +319,7 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid grid-cols-3 gap-2 sm:gap-4">
           <StatCard label="Total Orders Today" value={stats.totalOrdersToday} />
           <StatCard label="Delivered Today" value={stats.deliveredToday} />
           <StatCard label="Pending Orders" value={stats.pendingOrders} />
@@ -331,7 +331,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsDriverModalOpen(true)}
-                className="inline-flex items-center justify-center rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] text-accent transition hover:bg-accent/20"
+                className="inline-flex items-center justify-center rounded-lg border border-accent/30 bg-accent/10 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-accent transition hover:bg-accent/20 sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs sm:tracking-[0.18em]"
               >
                 Add Driver
               </button>
@@ -566,13 +566,21 @@ function StatCard({
   action?: React.ReactNode;
 }) {
   return (
-    <article className="rounded-[24px] border border-border bg-card p-5 shadow-2xl shadow-black/20">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm uppercase tracking-[0.24em] text-muted">{label}</p>
+    <article className="min-w-0 rounded-[18px] border border-border bg-card p-3 shadow-2xl shadow-black/20 sm:rounded-[24px] sm:p-5">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <p className="min-w-0 text-[10px] uppercase leading-4 tracking-[0.12em] text-muted sm:text-sm sm:tracking-[0.24em]">
+          {label}
+        </p>
         {action}
       </div>
-      <p className="mt-4 text-4xl font-semibold text-foreground">{value}</p>
-      {detail ? <p className="mt-2 text-sm text-muted">{detail}</p> : null}
+      <p className="mt-3 break-words text-lg font-semibold leading-tight text-foreground sm:mt-4 sm:text-4xl">
+        {value}
+      </p>
+      {detail ? (
+        <p className="mt-1 text-[10px] leading-4 text-muted sm:mt-2 sm:text-sm sm:leading-5">
+          {detail}
+        </p>
+      ) : null}
     </article>
   );
 }
