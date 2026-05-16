@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import WebSocket from 'ws';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -13,7 +14,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    transport: WebSocket,
+  },
+});
 
 async function generateUniqueAdminId() {
   for (let attempt = 0; attempt < 5; attempt += 1) {

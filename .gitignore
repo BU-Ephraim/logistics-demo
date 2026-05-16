@@ -44,3 +44,5 @@ scripts/generate-admin.ts
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+scripts/generate-admin.ts
+/scripts
