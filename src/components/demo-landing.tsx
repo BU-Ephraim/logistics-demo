@@ -93,7 +93,10 @@ export function DemoLanding({
             Customer, bot, and driver channels stay synchronized through Supabase so you can demo dispatch workflows in one place.
           </p>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
-            <FeatureCard title="Realtime inbox" description="Messages update instantly across every chat thread." />
+            <FeatureCard
+              title="WhatsApp demo"
+              description="Simulate how customer, dispatch, and driver updates would flow in a live WhatsApp-based operations setup."
+            />
             <FeatureCard title="Driver seeding" description="James, Sule, and Amina are created automatically for new admins." />
             <FeatureCard title="Mobile-first" description="Chat list and detail views collapse cleanly on small screens." />
           </div>
@@ -104,7 +107,7 @@ export function DemoLanding({
             <p className="text-sm uppercase tracking-[0.25em] text-muted">Start demo</p>
             <h2 className="mt-3 text-2xl font-semibold text-foreground">Enter your admin ID</h2>
             <p className="mt-3 text-sm leading-6 text-muted">
-              During development, set <span className="font-medium text-foreground">DEFAULT_ADMIN_ID</span> in your environment to skip this form.
+              Contact the developer or demo owner for a valid admin ID before starting the workspace.
             </p>
           </div>
 
