@@ -331,7 +331,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsDriverModalOpen(true)}
-                className="inline-flex w-fit items-center justify-center self-start rounded-lg border border-accent/30 bg-accent/10 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.12em] text-accent transition hover:bg-accent/20 sm:self-auto sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs sm:tracking-[0.18em]"
+                className="inline-flex w-fit items-center justify-center self-start rounded-lg border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.08em] text-accent transition hover:bg-accent/20 sm:self-auto sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs sm:tracking-[0.18em]"
               >
                 Add Driver
               </button>
