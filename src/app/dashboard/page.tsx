@@ -163,7 +163,13 @@ export default function DashboardPage() {
   }, []);
 
   const activeOrders = useMemo(
-    () => orders.filter((order) => order.status === "pending" || order.status === "assigned"),
+    () =>
+      orders.filter(
+        (order) =>
+          order.status === "pending" ||
+          order.status === "assigned" ||
+          order.status === "picked_up"
+      ),
     [orders]
   );
   const completedOrders = useMemo(
@@ -175,11 +181,20 @@ export default function DashboardPage() {
     const totalOrdersToday = orders.filter((order) => isOnOrAfter(order.created_at, todayStart)).length;
     const deliveredToday = orders.filter((order) => isOnOrAfter(order.delivered_at, todayStart)).length;
     const pendingOrders = orders.filter(
-      (order) => order.status === "pending" || order.status === "assigned"
+      (order) =>
+        order.status === "pending" ||
+        order.status === "assigned" ||
+        order.status === "picked_up"
     ).length;
     const totalDrivers = drivers.length;
     const busyDrivers = new Set(
-      orders.filter((order) => order.status === "assigned" && order.driver_name).map((order) => order.driver_name)
+      orders
+        .filter(
+          (order) =>
+            (order.status === "assigned" || order.status === "picked_up") &&
+            order.driver_name
+        )
+        .map((order) => order.driver_name)
     ).size;
     const totalAmountMade = orders
       .filter((order) => order.status === "delivered")
@@ -374,7 +389,7 @@ export default function DashboardPage() {
           </section>
 
           {dashboardView === "active" ? (
-            <OrdersPanel title="Active Orders" subtitle="Manual dispatch fallback for pending and assigned deliveries.">
+            <OrdersPanel title="Active Orders" subtitle="Manual dispatch fallback for pending, assigned, and picked up deliveries.">
             <OrdersTable>
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-[0.2em] text-muted">
@@ -640,6 +655,8 @@ function StatusPill({ status }: { status: string }) {
   const tone =
     status === "delivered"
       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+      : status === "picked_up"
+        ? "border-violet-500/30 bg-violet-500/10 text-violet-200"
       : status === "assigned"
         ? "border-sky-500/30 bg-sky-500/10 text-sky-200"
         : "border-amber-500/30 bg-amber-500/10 text-amber-200";

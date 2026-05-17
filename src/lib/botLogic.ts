@@ -31,6 +31,14 @@ interface ParsedCustomerMessage {
   item: string | null;
 }
 
+type DriverBotContext = {
+  mode?: "menu" | "pending-list" | "completed-list" | "order-detail";
+  orderIds?: string[];
+  orderId?: string;
+};
+
+const DRIVER_ACTIVE_STATUSES = ["pending", "assigned", "picked_up"] as const;
+
 export function getBotWelcomeMessage() {
   return "Welcome! Reply with:\n\n1. Create new order\n2. Help";
 }
@@ -283,43 +291,46 @@ async function updateOrder(orderId: string, patch: OrderUpdate) {
   return fetchOrderById(orderId);
 }
 
-async function findDriverActiveOrder(adminId: string, driverName: string) {
+async function findDriverByName(adminId: string, driverName: string) {
   const supabase = getSupabaseBrowserClient();
-  const result = await supabase
+  const { data, error } = await supabase
+    .from("drivers")
+    .select("id, admin_id, name, phone, created_at")
+    .eq("admin_id", adminId)
+    .eq("name", driverName)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? null) as DriverRow | null;
+}
+
+async function fetchDriverOrders(adminId: string, driverName: string, mode: "active" | "completed") {
+  const supabase = getSupabaseBrowserClient();
+  let query = supabase
     .from("orders")
     .select(
       "id, admin_id, order_number, customer_name, pickup, dropoff, phone, item, amount, status, driver_name, created_at, delivered_at"
     )
     .eq("admin_id", adminId)
     .eq("driver_name", driverName)
-    .neq("status", "delivered")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order(mode === "completed" ? "delivered_at" : "created_at", { ascending: false });
 
-  if (result.error) {
-    throw result.error;
+  if (mode === "completed") {
+    query = query.eq("status", "delivered");
+  } else {
+    query = query.in("status", [...DRIVER_ACTIVE_STATUSES]);
   }
 
-  return (result.data ?? null) as OrderRow | null;
-}
+  const { data, error } = await query;
 
-export function formatOrderDetails(
-  order: Pick<
-    OrderRow,
-    | "order_number"
-    | "pickup"
-    | "dropoff"
-    | "customer_name"
-    | "phone"
-    | "item"
-    | "amount"
-  >
-) {
-  const itemLabel = order.item?.trim() ? order.item : "Not specified";
-  const amountLabel = order.amount?.trim() ? order.amount : "pending";
+  if (error) {
+    throw error;
+  }
 
-  return `#${order.order_number ?? "..."}: ${order.pickup} → ${order.dropoff}, Customer ${order.customer_name} (${order.phone}), Item ${itemLabel}, Amount ${amountLabel}`;
+  return (data ?? []) as OrderRow[];
 }
 
 async function sendBotChatMessage(adminId: string, content: string) {
@@ -337,7 +348,12 @@ async function sendBotChatMessage(adminId: string, content: string) {
   }
 }
 
-async function sendDriverBotMessage(adminId: string, driverName: string, content: string) {
+async function sendDriverBotMessageWithContext(
+  adminId: string,
+  driverName: string,
+  content: string,
+  metadata: DriverBotContext | null
+) {
   const { error } = await insertBotMessages([
     {
       admin_id: adminId,
@@ -345,6 +361,7 @@ async function sendDriverBotMessage(adminId: string, driverName: string, content
       driver_name: driverName,
       sender: "bot",
       content,
+      metadata,
     },
   ]);
 
@@ -353,24 +370,257 @@ async function sendDriverBotMessage(adminId: string, driverName: string, content
   }
 }
 
+async function getLatestDriverBotContext(adminId: string, driverName: string) {
+  const supabase = getSupabaseBrowserClient();
+  const result = await supabase
+    .from("messages")
+    .select("metadata")
+    .eq("admin_id", adminId)
+    .eq("chat_type", "driver")
+    .eq("driver_name", driverName)
+    .eq("sender", "bot")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = result;
+
+  if (error) {
+    throw error;
+  }
+
+  const data = result.data as Pick<Database["public"]["Tables"]["messages"]["Row"], "metadata"> | null;
+  const metadata = data?.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  return metadata as DriverBotContext;
+}
+
+async function getDriverDashboardPath(adminId: string, driverName: string) {
+  const driver = await findDriverByName(adminId, driverName);
+  return driver ? `/driver/${driver.id}` : null;
+}
+
+function getDriverMenuMessage(driverName: string, dashboardPath: string | null) {
+  const lines = [
+    `Welcome Driver ${driverName}. Reply with:`,
+    "1. View pending orders (list)",
+    "2. View completed orders (list)",
+    "3. Get dashboard link",
+  ];
+
+  if (dashboardPath) {
+    lines.push("", `📋 View all your orders: [Open dashboard →](${dashboardPath})`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatDriverOrderSummary(
+  order: Pick<OrderRow, "order_number" | "pickup" | "dropoff" | "customer_name" | "phone">
+) {
+  return `📦 New order #${order.order_number ?? "..."}: ${order.pickup} → ${order.dropoff}. Customer: ${order.customer_name} (${order.phone}). Use the menu to see all your orders.`;
+}
+
+function formatDriverPendingList(orders: OrderRow[]) {
+  return orders
+    .map(
+      (order, index) =>
+        `${index + 1}. Order #${order.order_number ?? "..."}: ${order.pickup} → ${order.dropoff} (Customer: ${order.customer_name})`
+    )
+    .join("\n");
+}
+
+function formatDriverCompletedList(orders: OrderRow[]) {
+  return orders
+    .slice(0, 10)
+    .map(
+      (order, index) =>
+        `${index + 1}. Order #${order.order_number ?? "..."}: ${order.pickup} → ${order.dropoff} (${formatDriverDate(order.delivered_at)})`
+    )
+    .join("\n");
+}
+
+function formatDriverOrderDetails(order: OrderRow) {
+  const itemLabel = order.item?.trim() ? order.item : "Not specified";
+
+  return [
+    `Order #${order.order_number ?? "..."}`,
+    `Pickup: ${order.pickup}`,
+    `Dropoff: ${order.dropoff}`,
+    `Customer: ${order.customer_name}`,
+    `Phone: ${order.phone}`,
+    `Item: ${itemLabel}`,
+    `Status: ${order.status ?? "pending"}`,
+    "",
+    "Reply 'pickup' or 'deliver' to update.",
+  ].join("\n");
+}
+
+function formatDriverDate(value: string | null) {
+  if (!value) {
+    return "Not available";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+async function ensureDriverWelcomeMessage(adminId: string, driverName: string, dashboardPath: string | null) {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("admin_id", adminId)
+    .eq("chat_type", "driver")
+    .eq("driver_name", driverName)
+    .eq("sender", "bot")
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  if ((data ?? []).length > 0) {
+    return;
+  }
+
+  await sendDriverBotMessageWithContext(
+    adminId,
+    driverName,
+    getDriverMenuMessage(driverName, dashboardPath),
+    { mode: "menu" }
+  );
+}
+
+async function sendDriverDashboardLink(adminId: string, driverName: string) {
+  const dashboardPath = await getDriverDashboardPath(adminId, driverName);
+  const content = dashboardPath
+    ? `📋 View all your orders: [Open dashboard →](${dashboardPath})`
+    : "Dashboard link unavailable right now.";
+
+  await sendDriverBotMessageWithContext(adminId, driverName, content, { mode: "menu" });
+}
+
+async function sendDriverPendingOrders(adminId: string, driverName: string) {
+  const orders = await fetchDriverOrders(adminId, driverName, "active");
+
+  if (orders.length === 0) {
+    await sendDriverBotMessageWithContext(adminId, driverName, "No pending orders.", {
+      mode: "menu",
+    });
+    return;
+  }
+
+  await sendDriverBotMessageWithContext(
+    adminId,
+    driverName,
+    `${formatDriverPendingList(orders)}\n\nReply with order number to see details, or 'link' for full dashboard.`,
+    { mode: "pending-list", orderIds: orders.map((order) => order.id) }
+  );
+}
+
+async function sendDriverCompletedOrders(adminId: string, driverName: string) {
+  const orders = await fetchDriverOrders(adminId, driverName, "completed");
+
+  if (orders.length === 0) {
+    await sendDriverBotMessageWithContext(adminId, driverName, "No completed orders yet.", {
+      mode: "menu",
+    });
+    return;
+  }
+
+  await sendDriverBotMessageWithContext(
+    adminId,
+    driverName,
+    formatDriverCompletedList(orders),
+    { mode: "completed-list", orderIds: orders.map((order) => order.id) }
+  );
+}
+
+async function sendDriverOrderDetails(adminId: string, driverName: string, orderId: string) {
+  const order = await fetchOrderById(orderId);
+
+  if (order.driver_name !== driverName) {
+    await sendDriverBotMessageWithContext(
+      adminId,
+      driverName,
+      "That order is not assigned to this driver.",
+      { mode: "menu" }
+    );
+    return;
+  }
+
+  await sendDriverBotMessageWithContext(
+    adminId,
+    driverName,
+    formatDriverOrderDetails(order),
+    { mode: "order-detail", orderId: order.id }
+  );
+}
+
+export async function markOrderPickedUp(adminId: string, orderId: string, driverName: string) {
+  const updatedOrder = await updateOrder(orderId, {
+    status: "picked_up",
+  });
+
+  await sendDriverBotMessageWithContext(
+    adminId,
+    driverName,
+    `✓ Picked up order #${updatedOrder.order_number ?? "..."}.\n\nReply 'deliver' when the order is completed.`,
+    { mode: "order-detail", orderId: updatedOrder.id }
+  );
+
+  return updatedOrder;
+}
+
+export async function markOrderDelivered(adminId: string, orderId: string, driverName: string) {
+  const deliveredOrder = await updateOrder(orderId, {
+    status: "delivered",
+    delivered_at: new Date().toISOString(),
+  });
+
+  await sendDriverBotMessageWithContext(
+    adminId,
+    driverName,
+    `✓ Delivered order #${deliveredOrder.order_number ?? "..."}.`,
+    { mode: "menu" }
+  );
+  await sendBotChatMessage(
+    adminId,
+    `Driver ${driverName} marked order #${deliveredOrder.order_number ?? "..."} as delivered.`
+  );
+
+  return deliveredOrder;
+}
+
 export async function assignOrderToDriver(
   adminId: string,
   orderId: string,
   driverName: string
 ) {
+  const dashboardPath = await getDriverDashboardPath(adminId, driverName);
+  await ensureDriverWelcomeMessage(adminId, driverName, dashboardPath);
+
   const updatedOrder = await updateOrder(orderId, {
     driver_name: driverName,
     status: "assigned",
   });
 
-  await sendDriverBotMessage(
+  await sendDriverBotMessageWithContext(
     adminId,
     driverName,
-    `📦 New order ${formatOrderDetails(updatedOrder)}
-
-Reply with:
-1. Mark picked up
-2. Mark delivered`
+    [
+      formatDriverOrderSummary(updatedOrder),
+      dashboardPath ? `\n📋 View all your orders: [Open dashboard →](${dashboardPath})` : "",
+    ].join("\n"),
+    { mode: "menu" }
   );
 
   return updatedOrder;
@@ -509,44 +759,49 @@ export async function handleDriverMessage(
   content: string
 ) {
   const normalized = normalizeReply(content);
-  if (normalized !== "1" && normalized !== "2") {
+  const latestContext = await getLatestDriverBotContext(adminId, driverName);
+
+  if (normalized === "link" || normalized === "3") {
+    await sendDriverDashboardLink(adminId, driverName);
     return;
   }
 
-  const order = await findDriverActiveOrder(adminId, driverName);
-  if (!order) {
-    await sendDriverBotMessage(
-      adminId,
-      driverName,
-      "No active order found for this driver right now."
-    );
-    return;
+  if (latestContext?.mode === "order-detail" && latestContext.orderId) {
+    if (normalized === "pickup" || normalized === "1") {
+      await markOrderPickedUp(adminId, latestContext.orderId, driverName);
+      return;
+    }
+
+    if (normalized === "deliver" || normalized === "2") {
+      await markOrderDelivered(adminId, latestContext.orderId, driverName);
+      return;
+    }
+  }
+
+  if (latestContext?.mode === "pending-list" && latestContext.orderIds?.length) {
+    const selection = Number.parseInt(normalized, 10);
+    const orderId = Number.isNaN(selection) ? null : latestContext.orderIds[selection - 1] ?? null;
+
+    if (orderId) {
+      await sendDriverOrderDetails(adminId, driverName, orderId);
+      return;
+    }
   }
 
   if (normalized === "1") {
-    await updateOrder(order.id, {
-      status: "assigned",
-    });
-    await sendDriverBotMessage(
-      adminId,
-      driverName,
-      `✓ Picked up order #${order.order_number ?? "..."}.\n\nReply with:\n2. Mark delivered`
-    );
+    await sendDriverPendingOrders(adminId, driverName);
     return;
   }
 
-  const deliveredOrder = await updateOrder(order.id, {
-    status: "delivered",
-    delivered_at: new Date().toISOString(),
-  });
+  if (normalized === "2") {
+    await sendDriverCompletedOrders(adminId, driverName);
+    return;
+  }
 
-  await sendDriverBotMessage(
+  await sendDriverBotMessageWithContext(
     adminId,
     driverName,
-    `✓ Delivered order #${deliveredOrder.order_number ?? "..."}.`
-  );
-  await sendBotChatMessage(
-    adminId,
-    `✅ Driver ${driverName} marked order #${deliveredOrder.order_number ?? "..."} as delivered. Customer notified: 'Your order has been delivered. Thank you for using SwiftSend.'`
+    getDriverMenuMessage(driverName, await getDriverDashboardPath(adminId, driverName)),
+    { mode: "menu" }
   );
 }

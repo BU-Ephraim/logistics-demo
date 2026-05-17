@@ -8,7 +8,7 @@ export type Json =
 
 export type ChatType = "customer" | "bot" | "driver";
 export type MessageSender = "admin" | "bot" | "customer" | "driver";
-export type OrderStatus = "pending" | "assigned" | "delivered";
+export type OrderStatus = "pending" | "assigned" | "picked_up" | "delivered";
 export type BotSessionStep =
   | "idle"
   | "awaiting_customer_text"

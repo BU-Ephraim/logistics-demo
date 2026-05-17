@@ -13,6 +13,16 @@ import {
 } from "@/lib/demo-settings";
 import { getErrorMessage } from "@/lib/supabase-errors";
 
+function notifyDemoAccess(adminId: string, businessName: string) {
+  return fetch("/api/notify-demo", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ adminId, businessName }),
+  }).catch(() => undefined);
+}
+
 export function DemoLanding({
   defaultAdminId,
   defaultBusinessName,
@@ -39,6 +49,7 @@ export function DemoLanding({
           setDemoAdminId(defaultAdminId);
           setDemoBusinessName(defaultBusinessName);
           await ensureAdminSeedData(defaultAdminId);
+          void notifyDemoAccess(defaultAdminId, defaultBusinessName);
           router.replace("/chat");
         } catch {
           clearDemoAdminId();
@@ -65,6 +76,7 @@ export function DemoLanding({
       setDemoAdminId(parsedId);
       setDemoBusinessName(parsedBusinessName);
       await ensureAdminSeedData(parsedId);
+      void notifyDemoAccess(parsedId, parsedBusinessName);
       router.replace("/chat");
     } catch (seedError) {
       clearDemoAdminId();

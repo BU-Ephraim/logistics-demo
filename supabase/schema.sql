@@ -22,7 +22,7 @@ CREATE TABLE orders (
   phone TEXT NOT NULL,
   item TEXT,
   amount TEXT,
-  status TEXT CHECK (status IN ('pending', 'assigned', 'delivered')) DEFAULT 'pending',
+  status TEXT CHECK (status IN ('pending', 'assigned', 'picked_up', 'delivered')) DEFAULT 'pending',
   driver_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   delivered_at TIMESTAMPTZ
@@ -122,6 +122,11 @@ ON messages FOR ALL
 TO anon, authenticated
 USING (true)
 WITH CHECK (true);
+
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
+ALTER TABLE orders
+ADD CONSTRAINT orders_status_check
+CHECK (status IN ('pending', 'assigned', 'picked_up', 'delivered'));
 
 ALTER PUBLICATION supabase_realtime ADD TABLE messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;

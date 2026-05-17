@@ -46,3 +46,4 @@ scripts/generate-admin.ts
 next-env.d.ts
 scripts/generate-admin.ts
 /scripts
+.env.example
