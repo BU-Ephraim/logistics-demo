@@ -7,20 +7,42 @@ import { ensureAdminSeedData, normalizeAdminId } from "@/lib/demo-data";
 import {
   clearDemoAdminId,
   getDemoAdminId,
+  getDemoBusinessName,
   normalizeBusinessName,
   setDemoAdminId,
   setDemoBusinessName,
 } from "@/lib/demo-settings";
 import { getErrorMessage } from "@/lib/supabase-errors";
 
-function notifyDemoAccess(adminId: string, businessName: string) {
-  return fetch("/api/notify-demo", {
+async function notifyDemoAccess(adminId: string, businessName: string) {
+  const response = await fetch("/api/notify-demo", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ adminId, businessName }),
-  }).catch(() => undefined);
+    keepalive: true,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to notify demo access.");
+  }
+}
+
+function getInitialAdminId(defaultAdminId: string) {
+  if (typeof window === "undefined") {
+    return defaultAdminId;
+  }
+
+  return getDemoAdminId() ?? defaultAdminId;
+}
+
+function getInitialBusinessName(defaultBusinessName: string) {
+  if (typeof window === "undefined") {
+    return defaultBusinessName;
+  }
+
+  return getDemoBusinessName() || defaultBusinessName;
 }
 
 export function DemoLanding({
@@ -31,15 +53,13 @@ export function DemoLanding({
   defaultBusinessName: string;
 }) {
   const router = useRouter();
-  const [adminId, setAdminId] = useState(defaultAdminId);
-  const [businessName, setBusinessName] = useState(defaultBusinessName);
+  const [adminId, setAdminId] = useState(() => getInitialAdminId(defaultAdminId));
+  const [businessName, setBusinessName] = useState(() => getInitialBusinessName(defaultBusinessName));
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const storedId = getDemoAdminId();
-    if (storedId) {
-      router.replace("/chat");
+    if (getDemoAdminId()) {
       return;
     }
 
@@ -49,7 +69,7 @@ export function DemoLanding({
           setDemoAdminId(defaultAdminId);
           setDemoBusinessName(defaultBusinessName);
           await ensureAdminSeedData(defaultAdminId);
-          void notifyDemoAccess(defaultAdminId, defaultBusinessName);
+          await notifyDemoAccess(defaultAdminId, defaultBusinessName).catch(() => undefined);
           router.replace("/chat");
         } catch {
           clearDemoAdminId();
@@ -76,7 +96,7 @@ export function DemoLanding({
       setDemoAdminId(parsedId);
       setDemoBusinessName(parsedBusinessName);
       await ensureAdminSeedData(parsedId);
-      void notifyDemoAccess(parsedId, parsedBusinessName);
+      await notifyDemoAccess(parsedId, parsedBusinessName).catch(() => undefined);
       router.replace("/chat");
     } catch (seedError) {
       clearDemoAdminId();

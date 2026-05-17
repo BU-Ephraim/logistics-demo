@@ -313,8 +313,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-[100dvh] overflow-x-hidden bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-8">
+    <main className="flex min-h-[100dvh] flex-col overflow-x-hidden bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-8">
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-muted">Operations</p>

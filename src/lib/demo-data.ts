@@ -19,6 +19,7 @@ export interface ChatDefinition {
   subtitle: string;
   chatType: ChatType;
   driverName: string | null;
+  driverId: string | null;
 }
 
 export function normalizeAdminId(value: string) {
@@ -217,6 +218,7 @@ export function buildChatDefinitions(drivers: DriverRow[], messages: MessageRow[
       subtitle: customerMessage?.content ?? "Customer support and delivery updates",
       chatType: "customer" as const,
       driverName: null,
+      driverId: null,
     },
     {
       id: getChatKey("bot"),
@@ -224,6 +226,7 @@ export function buildChatDefinitions(drivers: DriverRow[], messages: MessageRow[
       subtitle: botMessage?.content ?? "Automations and workflow prompts",
       chatType: "bot" as const,
       driverName: null,
+      driverId: null,
     },
     ...drivers.map((driver) => {
       const lastDriverMessage = [...messages]
@@ -239,6 +242,7 @@ export function buildChatDefinitions(drivers: DriverRow[], messages: MessageRow[
         subtitle: lastDriverMessage?.content ?? driver.phone ?? "Driver channel",
         chatType: "driver" as const,
         driverName: driver.name,
+        driverId: driver.id,
       };
     }),
   ] satisfies ChatDefinition[];

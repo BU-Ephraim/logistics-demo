@@ -29,7 +29,7 @@ export default function DemoRedirectPage() {
         setDemoAdminId(currentAdminId);
         setDemoBusinessName("SwiftSend");
         await ensureAdminSeedData(currentAdminId);
-        void fetch("/api/notify-demo", {
+        await fetch("/api/notify-demo", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -38,6 +38,7 @@ export default function DemoRedirectPage() {
             adminId: currentAdminId,
             businessName: "SwiftSend",
           }),
+          keepalive: true,
         }).catch(() => undefined);
         router.replace("/chat");
       } catch {

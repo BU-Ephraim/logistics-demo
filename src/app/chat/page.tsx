@@ -461,6 +461,15 @@ export default function ChatPage() {
                   </h2>
                   <p className="truncate text-sm text-muted">{selectedChat.subtitle}</p>
                 </div>
+                {selectedChat.chatType === "driver" && selectedChat.driverId ? (
+                  <Link
+                    href={`/driver/${selectedChat.driverId}`}
+                    className="inline-flex h-10 items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-4 text-sm font-medium text-accent transition hover:bg-accent/15"
+                  >
+                    <Truck className="h-4 w-4" />
+                    Driver dash
+                  </Link>
+                ) : null}
                 {selectedChat.chatType === "customer" ? (
                   <button
                     type="button"
